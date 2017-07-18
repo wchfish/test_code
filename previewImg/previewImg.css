@@ -13,7 +13,7 @@
     height: 95%;
     background: #000;
     /*opacity: 0.3;*/
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.5);
     z-index: 2000;
 }
 
@@ -65,10 +65,41 @@
     display: none;
 }
 
-/*开发阶段辅助样式*/
-.dt-img--hide {
-    display: none;
+/*缩略图样式*/
+.miniImg {
+    position: fixed;
+    border: 1px solid #fff;
+    border-radius: 5px;
 }
+
+.miniImg-mask {
+
+    background: #000;
+    /*opacity: 0.3;*/
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 2001;
+}
+.miniImg-imgBox {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+}
+.miniImg-img {
+    height: 100%
+}
+.miniImg-closeBtn--hover {
+    background: #f00;
+}
+.miniImg-frame {
+    position: absolute;
+    border: 1px solid #333;
+
+}
+
+
 
 
 
