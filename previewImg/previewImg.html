@@ -5,35 +5,25 @@
     <title>previewImg</title>
     <link rel="stylesheet" href="css/previewImg.css">
 
-    <script src="../../libs/jquery/jquery-1.10.2.js"></script>
+    <script src="../libs/jquery-1.10.2.js"></script>
     <script src="js/previewImg.js"></script>
 </head>
 <body>
-    <img src="image/dt.png" alt="测试遮罩图" class="dt-img dt-img--test">
-    <img src="image/3.jpg" alt="测试遮罩图" class="dt-img dt-img--hide dt-img--test">
-    <!--<img src="image/2.jpg" alt="测试遮罩图" class="dt-img dt-img&#45;&#45;hide dt-img&#45;&#45;test">-->
-    <!--<div class="previewImg-container previewImg-mask previewImg-test">
-        <img class="previewImg-img" src="image/o3.png" alt="预览图片">
-        <div class="previewImg-closeBtn previewImg-closeBtn&#45;&#45;hover">
-            <span class="icon icon-close"></span>
-        </div>
-        <div class="previewImg-zoomValue previewImg-zoomValue&#45;&#45;hide">36%</div>
-    </div>-->
-    <script>
-        $(function() {
+<img src="image/dt.png" alt="测试遮罩图" class="dt-img dt-img--test">
+<div style="display:none;">
+    <img src="image/2.jpg" alt="测试遮罩图" class="dt-img dt-img--hide" >
+</div>
 
-            // test: 显示已经加载完成的图片,不考虑异步加载的形式
-            var dtImg = $('.dt-img')[1];
-            $(dtImg).on('load', function() {
-                var previewImgObj = new PreviewImg({
-                    img: dtImg
-                });
-                var moveObj = new PreviewImg.move(previewImgObj.$img[0], previewImgObj.$container[0]);
-                moveObj.moveEnable();
+<script>
+    $(function() {
+        // test: 显示已经加载完成的图片,不考虑异步加载的形式
+        var dtImg = $('.dt-img')[1];
+        $(dtImg).on('load', function() {
+            var previewImgObj = new PreviewImg({
+                img: dtImg
             });
-
-
         });
-    </script>
+    });
+</script>
 </body>
 </html>
