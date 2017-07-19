@@ -5,10 +5,10 @@ $(function() {
     /**
      * 图片预览组件
      * */
+    // TODO: 修复bug：放大图片后再缩小，预览图片定位不合理
+    // TODO: 修复bug：拖动缩略图，预览图片定位错误
     // TODO: 先完成同步模式，以后考虑加入src加载图片的预览
-    // TODO: 完善接口，优化组件的组合使用方式
     // TODO: 完善组件的事件接口
-    // TODO: 放大图片后再缩小会出现bug
     function PreviewImg(options) {
         var defaultOpts = {
             topWindow: false,
@@ -26,6 +26,7 @@ $(function() {
 
         // 图片等比例缩放时，先充满遮罩的方向:'x'或'y'
         this.firstFullOf = null;
+        this.imgOverflow = false;
 
         this._create();
         this._init();
@@ -111,14 +112,13 @@ $(function() {
         _init: function() {
             var g = this, p = g.options;
             g._initImg();
-            
-            // 图片可拖动
+            // 图片拖动管理
             g.moveObj = new PreviewImg.move(g.$img[0], g.$container[0]);
-            g.moveObj.moveEnable();
 
             // 创建缩略图
             p.miniImgObj = new PreviewImg.miniImg({
-                previewImgObj: g
+                previewImgObj: g,
+                display: false
             });
 
             // 绑定预览图片移动的处理函数
@@ -157,10 +157,20 @@ $(function() {
                 }
             }
 
-
         },
         /**
-         * 相对于原始大小缩放图片
+         * 图片是否超出预览容器
+         * */
+        hasOverflow: function() {
+            var g = this, p = g.options;
+            if (g.$img.width() > g.$container.width() || g.$img.height() > g.$container.height()) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        /**
+         * @Function  相对于原始大小缩放图片
          * @param {Number} rate 相对于图片原始大小的0.01~2.00（1%~200%），精确到小数点后两位
          * @param {String} type zoomin放大，zoomout缩小
          * */
@@ -169,11 +179,26 @@ $(function() {
             g.$img.width(g.originalWidth * rate).height(g.originalHeight * rate);
             g.zoomValue = rate;
 
+            g.imgOverflow = g.hasOverflow();
+
             // 缩略图镜框缩放
-            if (p.miniImgObj) {
+            // TODO: 修复图片缩小的定位问题后开启缩略图隐藏和禁止移动两项功能
+            if (p.miniImgObj && g.imgOverflow) {
+                p.miniImgObj.show();
                 p.miniImgObj.setFrameSize();
+            } else if (p.miniImgObj) {
+                // p.miniImgObj.hide();
+            }
+            // 设置图片能否移动
+            if (g.moveObj && g.imgOverflow) {
+                g.moveObj.moveEnable();
+            } else if (g.moveObj) {
+                // g.moveObj.moveDisable();
             }
         },
+        /**
+         * @Function 设置预览图片的位置
+         * */
         setImgPosition: function() {
             var g = this, p = g.options;
             var miniImgObj = p.miniImgObj,
@@ -191,7 +216,6 @@ $(function() {
                 var top = -1 * frameTop * (g.$img.width() / $imgBox.width());
                 g.$img.css('top', top);
             }
-
         }
     };
 
@@ -208,7 +232,9 @@ $(function() {
             // 缩略图宽高占屏幕宽度的比例
             percent: 20,
             // 遮罩的不透明度，实际设置的是背景色的rgba值
-            opacity: null
+            opacity: null,
+            // 创建后是否自动显示
+            display: true
         };
         this.options = $.extend({}, defaultOpts, options);
         this._create();
@@ -228,7 +254,6 @@ $(function() {
                 .appendTo(g.$container);
             // 插入到预览组件后面
             g.$container.insertAfter(p.previewImgObj.dom);
-
         },
         _renderImgBox: function() {
             var g = this, p = g.options;
@@ -298,6 +323,12 @@ $(function() {
             g.moveObj.$dom.on('dommove.previewimgmove', function() {
                 p.previewImgObj.setImgPosition();
             });
+
+            if (p.display) {
+                g.show();
+            } else {
+                g.hide();
+            }
         },
         _setPosition: function() {
             var g = this, p = g.options;
@@ -370,6 +401,7 @@ $(function() {
      * 元素拖动
      * @param {Object} dom 移动的dom元素
      * @param {Object} container 作为容器的dom元素
+     * @param {Object} options 配置项
      * */
     PreviewImg.move = function(dom, container, options) {
         this.dom = dom;
@@ -385,8 +417,6 @@ $(function() {
         // 开启移动功能
         moveEnable : function() {
             var g = this;
-            // var $dom = $(dom),
-            //     $container = $(container);
             g.$dom.css('cursor', 'move');
             g.$dom.on('mousedown.previewimgmove', function(e) {
                 // 阻止默认行为，防止拖动后'mouseup'事件失效
@@ -403,7 +433,6 @@ $(function() {
                         top: e.pageY
                     };
                     g._moveWithMouse(g.relativeValue, mousePosition);
-                    // TODO: 验证事件机制
                     // 触发元素移动事件
                     g.$dom.trigger('dommove.previewimgmove');
                 });
@@ -414,8 +443,7 @@ $(function() {
         },
         // 关闭移动功能
         moveDisable : function() {
-            // var g = this;
-            // var $dom = $(dom);
+            var g = this;
             g.$dom.css('cursor', 'auto');
             g.$dom.off('mousedown.previewimgmove');
         },
