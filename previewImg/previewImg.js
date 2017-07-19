@@ -5,8 +5,8 @@ $(function() {
     /**
      * 图片预览组件
      * */
+    // TODO: 修复bug：拖动缩略图，预览图片定位错误,因为css居中定位方案和图片重定位方法setImgPosition冲突造成的
     // TODO: 修复bug：放大图片后再缩小，预览图片定位不合理
-    // TODO: 修复bug：拖动缩略图，预览图片定位错误
     // TODO: 先完成同步模式，以后考虑加入src加载图片的预览
     // TODO: 完善组件的事件接口
     function PreviewImg(options) {
