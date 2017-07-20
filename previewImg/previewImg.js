@@ -5,7 +5,7 @@ $(function() {
     /**
      * 图片预览组件
      * */
-    // TODO: 修复bug：放大图片后再缩小，预览图片定位不合理
+    // TODO: 修复bug：放大图片后再缩小，预览图片定位不合理,和当前的垂直居中方案有冲突
     // TODO: 先完成同步模式，以后考虑加入src加载图片的预览
     // TODO: 完善组件的事件接口
     function PreviewImg(options) {
@@ -175,24 +175,53 @@ $(function() {
          * */
         zoomImg: function(rate) {
             var g = this, p = g.options;
-            g.$img.width(g.originalWidth * rate).height(g.originalHeight * rate);
+            var imgNewWidth = g.originalWidth * rate,
+                imgNewHeight = g.originalHeight * rate;
+            g.$img.width(imgNewWidth).height(imgNewHeight);
             g.zoomValue = rate;
 
             g.imgOverflow = g.hasOverflow();
 
-            // 缩略图镜框缩放
-            // TODO: 修复图片缩小的定位问题后开启缩略图隐藏和禁止移动两项功能
-            // 图片缩小时，需要对预览图进行重定位
-            
 
+            // TODO: 修复图片缩小的定位问题后开启缩略图隐藏和禁止移动两项功能
+
+            // 图片缩小时，需要对预览图进行重定位
+            var direction = PreviewImg.boundaryOver(g.$container[0], g.$img[0]);
+            if (g.$container.width() < imgNewWidth && (direction.left || direction.right)) {
+                var offsetLeft, offsetTop;
+                if (direction.left) {
+                    offsetLeft = g.$container.offset().left;
+                } else {
+                    offsetLeft = g.$container.offset().left + g.$container.width() - g.$img.width();
+                }
+                g.$img.offset({
+                    left: offsetLeft,
+                    top: g.$img.offset().top
+                });
+            }
+            if (g.$container.height() < imgNewHeight && (direction.top || direction.bottom)) {
+                if (direction.top) {
+                    offsetTop = g.$container.offset().top;
+                } else {
+                    offsetTop = g.$container.offset().top + g.$container.height() - g.$img.height();
+                }
+                g.$img.offset({
+                    left: g.$img.offset().left,
+                    top: offsetTop
+                });
+            }
+
+
+            // 缩略图镜框缩放
             if (p.miniImgObj && g.imgOverflow) {
                 p.miniImgObj.show();
                 p.miniImgObj.setFrameSize();
+                p.miniImgObj.setFramePosition();
             } else if (p.miniImgObj) {
                 // p.miniImgObj.hide();
             }
             // 设置图片能否移动
-            if (g.moveObj && g.imgOverflow) {
+            if (g.moveObj && g.imgOverflow && !g.moveObj.getMoveState()) {
                 g.moveObj.moveEnable();
             } else if (g.moveObj) {
                 // g.moveObj.moveDisable();
@@ -218,6 +247,27 @@ $(function() {
                 g.$img.offset({left: g.$img.offset().left, top: imgOffsetTop});
             }
         }
+    };
+
+    /**
+     * @Function boundaryOver 判断目标元素的边界是否超出容器元素
+     * @param {dom} target 目标元素
+     * @param {dom} container 容器元素
+     * @return {Object} direction
+     * */
+    PreviewImg.boundaryOver = function(target, container) {
+        var direction = {};
+        var $target = $(target),
+            $container = $(container);
+        var targetOffset = $target.offset(),
+            containerOffset = $container.offset();
+
+        direction.left = targetOffset.left < containerOffset.left;
+        direction.right = targetOffset.left + $target.width() > containerOffset.left + $container.width();
+        direction.top = targetOffset.top < containerOffset.top;
+        direction.bottom = targetOffset.top + $target.height() > containerOffset.top + $container.height();
+
+        return direction;
     };
 
     /**
@@ -408,6 +458,7 @@ $(function() {
         this.dom = dom;
         this.$dom = $(dom);
         this.$container = $(container);
+        this.movable = false;
         var defaultOpts = {
             // 验证可移动方向的规则：'preview'是预览图，'mini'是缩略图
             directionValidType: 'preview'
@@ -418,6 +469,7 @@ $(function() {
         // 开启移动功能
         moveEnable : function() {
             var g = this;
+            g.movable = true;
             g.$dom.css('cursor', 'move');
             g.$dom.on('mousedown.previewimgmove', function(e) {
                 // 阻止默认行为，防止拖动后'mouseup'事件失效
@@ -445,8 +497,12 @@ $(function() {
         // 关闭移动功能
         moveDisable : function() {
             var g = this;
+            g.movable = talse;
             g.$dom.css('cursor', 'auto');
             g.$dom.off('mousedown.previewimgmove');
+        },
+        getMoveState: function() {
+            return this.movable;
         },
         // 计算鼠标和dom元素左上角的相对位置
         _calRelativeValue: function(mousePosition) {
