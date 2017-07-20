@@ -5,7 +5,6 @@ $(function() {
     /**
      * 图片预览组件
      * */
-    // TODO: 修复bug：拖动缩略图，预览图片定位错误,因为css居中定位方案和图片重定位方法setImgPosition冲突造成的
     // TODO: 修复bug：放大图片后再缩小，预览图片定位不合理
     // TODO: 先完成同步模式，以后考虑加入src加载图片的预览
     // TODO: 完善组件的事件接口
@@ -183,6 +182,9 @@ $(function() {
 
             // 缩略图镜框缩放
             // TODO: 修复图片缩小的定位问题后开启缩略图隐藏和禁止移动两项功能
+            // 图片缩小时，需要对预览图进行重定位
+            
+
             if (p.miniImgObj && g.imgOverflow) {
                 p.miniImgObj.show();
                 p.miniImgObj.setFrameSize();
@@ -197,24 +199,23 @@ $(function() {
             }
         },
         /**
-         * @Function 设置预览图片的位置
+         * @Function 根据缩略图镜框移动的位置设置预览图片的位置
          * */
         setImgPosition: function() {
             var g = this, p = g.options;
             var miniImgObj = p.miniImgObj,
                 $imgBox = miniImgObj.$imgBox,
                 $frame = miniImgObj.$frame;
+            var rate = g.$img.width() / $imgBox.width();
             // left值
             if ($frame.width() < $imgBox.width()) {
-                var frameLeft = $frame.offset().left - $imgBox.offset().left;
-                var left = -1 * frameLeft * (g.$img.width() / $imgBox.width());
-                g.$img.css('left', left);
+                var imgOffsetLeft = ($imgBox.offset().left - $frame.offset().left) * rate + g.$container.offset().left;
+                g.$img.offset({left: imgOffsetLeft, top: g.$img.offset().top});
             }
             // top值
             if ($frame.height() < $imgBox.height()) {
-                var frameTop = $frame.offset().top - $imgBox.offset().top;
-                var top = -1 * frameTop * (g.$img.width() / $imgBox.width());
-                g.$img.css('top', top);
+                var imgOffsetTop = ($imgBox.offset().top - $frame.offset().top) * rate + g.$container.offset().top;
+                g.$img.offset({left: g.$img.offset().left, top: imgOffsetTop});
             }
         }
     };
@@ -367,17 +368,17 @@ $(function() {
             var previewImgObj = p.previewImgObj,
                 $imgCt = previewImgObj.$container,
                 $img =  previewImgObj.$img;
+            var rate = g.$imgBox.width() / $img.width();
+
             // left值
             if ($img.width() > $imgCt.width()) {
-                var left = $imgCt.offset().left - $img.offset().left;
-                var frameLeft = left * (g.$imgBox.width() / $img.width());
-                g.$frame.css('left', frameLeft);
+                var frameOffsetLeft = ($imgCt.offset().left - $img.offset().left) * rate + g.$imgBox.offset().left;
+                g.$frame.offset({left: frameOffsetLeft, top: g.$frame.offset().top});
             }
             // top值
             if ($img.height() > $imgCt.height()) {
-                var top = $imgCt.offset().top - $img.offset().top;
-                var frameTop = top * (g.$imgBox.width() / $img.width());
-                g.$frame.css('top', frameTop);
+                var frameOffsetTop = ($imgCt.offset().top - $img.offset().top) * rate + g.$imgBox.offset().top;
+                g.$frame.offset({left: g.$frame.offset().left, top: frameOffsetTop});
             }
 
         },
