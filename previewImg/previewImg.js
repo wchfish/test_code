@@ -5,7 +5,7 @@ $(function() {
     /**
      * 图片预览组件
      * */
-    // TODO: 修复bug：放大图片后再缩小，预览图片定位不合理,和当前的垂直居中方案有冲突
+    // TODO: 修复bug：图片先放大到超出边界再缩小，可能出现缩略图镜框定位错误的问题
     // TODO: 先完成同步模式，以后考虑加入src加载图片的预览
     // TODO: 完善组件的事件接口
     function PreviewImg(options) {
@@ -61,13 +61,13 @@ $(function() {
         _renderImg: function() {
             var g = this, p = g.options;
             if (p.src && p.src !== '') {
-                g.$img = $('<img class="previewImg-img" src="' + p.src + '" alt="预览图片"/>');
+                g.$img = $('<img class="previewImg-img previewImg-img--center" src="' + p.src + '" alt="预览图片"/>');
                 g.$container.append(g.$img);
             } else if (p.img) {
                 g.$img = $(p.img)
                     .clone()
                     .removeClass()
-                    .addClass('previewImg-img')
+                    .addClass('previewImg-img previewImg-img--center')
                     .css('display', 'block');
                 g.$container.append(g.$img);
             } else {
@@ -143,16 +143,19 @@ $(function() {
             } else {
                 g.firstFullOf = 'y';
             }
-
             //初始化图片大小
             if (g.originalWidth <= clientWidth && g.originalHeight <= clientHeight) {
                 return ;
             } else {
                 // 图片缩小
                 if (g.firstFullOf === 'x') {
-                    g.zoomImg(parseFloat((1 / widthRatio).toFixed(2)));
+                    // g.zoomImg(parseFloat((1 / widthRatio).toFixed(2)));
+                    g.$img.width(g.originalWidth / widthRatio).height(g.originalHeight / widthRatio);
+                    g.zoomValue = parseFloat((1 / widthRatio).toFixed(2));
                 } else {
-                    g.zoomImg(parseFloat((1 / heightRatio).toFixed(2)));
+                    // g.zoomImg(parseFloat((1 / heightRatio).toFixed(2)));
+                    g.$img.width(g.originalWidth / heightRatio).height(g.originalHeight / heightRatio);
+                    g.zoomValue = parseFloat((1 / heightRatio).toFixed(2));
                 }
             }
 
@@ -177,17 +180,77 @@ $(function() {
             var g = this, p = g.options;
             var imgNewWidth = g.originalWidth * rate,
                 imgNewHeight = g.originalHeight * rate;
+
+            // 获取图片焦点的比例
+            g.focusRate = g._getFocusRate();
+
             g.$img.width(imgNewWidth).height(imgNewHeight);
             g.zoomValue = rate;
-
             g.imgOverflow = g.hasOverflow();
 
+            // 设置图片能否移动
+            if (g.moveObj && g.imgOverflow && !g.moveObj.getMoveState()) {
+                g.moveObj.moveEnable();
 
-            // TODO: 修复图片缩小的定位问题后开启缩略图隐藏和禁止移动两项功能
+            } else if (g.moveObj && !g.imgOverflow) {
+                g.moveObj.moveDisable();
+                g.$img
+                    .removeClass('previewImg-img--offset')
+                    .addClass('previewImg-img--center');
+                g._clearOffsetAttr();
+            }
 
-            // 图片缩小时，需要对预览图进行重定位
+            g._imgZoomPosition();
+
+            // 缩略图镜框缩放
+            if (p.miniImgObj && g.imgOverflow) {
+                p.miniImgObj.show();
+                p.miniImgObj.setFrameSize();
+                p.miniImgObj.setFramePosition();
+            } else if (p.miniImgObj) {
+                p.miniImgObj.hide();
+            }
+        },
+        /**
+         * 获取图片在容器中焦点的宽高比例值
+         * */
+        _getFocusRate: function() {
+            var g = this, p = g.options;
+
+            var focusX = g.$container.offset().left + g.$container.width() / 2,
+                focusY = g.$container.offset().top + g.$container.height() / 2;
+            var widthRate = (focusX - g.$img.offset().left) / g.$img.width(),
+                heightRate = (focusY - g.$img.offset().top) / g.$img.height();
+
+            var focusRate = {
+                widthRate: widthRate,
+                heightRate:　heightRate
+            };
+            return focusRate;
+        },
+        /**
+         * 缩放后图片重定位：
+         * 1. 缩放后图片焦点位置不变。
+         * 2. 缩小后图片可能出现一侧超出一侧留有空位的情况，此时需要改变焦点位置重定位。
+         * */
+        _imgZoomPosition: function(rate) {
+            var g = this, p = g.options;
+            var imgWidth = g.$img.width(),
+                imgHeight = g.$img.height();
+
+
+
+            // 设置图片焦点位置，和缩放前一致
+            if (g.hasOverflow()) {
+                g.$img.offset({
+                    left: (g.$container.offset().left + g.$container.width() / 2) - g.$img.width() * g.focusRate.widthRate,
+                    top: (g.$container.offset().top + g.$container.height() / 2) - g.$img.height() * g.focusRate.heightRate
+                });
+            }
+
+            // 改变焦点，保证一侧超出时另一侧无空位
             var direction = PreviewImg.boundaryOver(g.$container[0], g.$img[0]);
-            if (g.$container.width() < imgNewWidth && (direction.left || direction.right)) {
+            if (g.$container.width() < imgWidth && (direction.left || direction.right)) {
                 var offsetLeft, offsetTop;
                 if (direction.left) {
                     offsetLeft = g.$container.offset().left;
@@ -199,7 +262,7 @@ $(function() {
                     top: g.$img.offset().top
                 });
             }
-            if (g.$container.height() < imgNewHeight && (direction.top || direction.bottom)) {
+            if (g.$container.height() < imgHeight && (direction.top || direction.bottom)) {
                 if (direction.top) {
                     offsetTop = g.$container.offset().top;
                 } else {
@@ -210,22 +273,17 @@ $(function() {
                     top: offsetTop
                 });
             }
-
-
-            // 缩略图镜框缩放
-            if (p.miniImgObj && g.imgOverflow) {
-                p.miniImgObj.show();
-                p.miniImgObj.setFrameSize();
-                p.miniImgObj.setFramePosition();
-            } else if (p.miniImgObj) {
-                // p.miniImgObj.hide();
-            }
-            // 设置图片能否移动
-            if (g.moveObj && g.imgOverflow && !g.moveObj.getMoveState()) {
-                g.moveObj.moveEnable();
-            } else if (g.moveObj) {
-                // g.moveObj.moveDisable();
-            }
+        },
+        /**
+         * 清除设置offset定位时附加的属性，保证图片的center定位正确
+         * */
+        _clearOffsetAttr: function() {
+            var g = this, p = g.options;
+            g.$img.css({
+                top: 0,
+                left: 0,
+                position: 'absolute'
+            });
         },
         /**
          * @Function 根据缩略图镜框移动的位置设置预览图片的位置
@@ -407,7 +465,7 @@ $(function() {
             }
             // 高度计算
             if ($img.height() <= $imgCt.height()) {
-                g.$frame.width(g.$imgBox.height());
+                g.$frame.height(g.$imgBox.height());
             } else {
                 var frameHeight = g.$imgBox.height() * ($imgCt.height() / $img.height());
                 g.$frame.height(frameHeight);
@@ -424,11 +482,15 @@ $(function() {
             if ($img.width() > $imgCt.width()) {
                 var frameOffsetLeft = ($imgCt.offset().left - $img.offset().left) * rate + g.$imgBox.offset().left;
                 g.$frame.offset({left: frameOffsetLeft, top: g.$frame.offset().top});
+            } else {
+                g.$frame.offset({left: g.$imgBox.offset().left, top: g.$frame.offset().top});
             }
             // top值
             if ($img.height() > $imgCt.height()) {
                 var frameOffsetTop = ($imgCt.offset().top - $img.offset().top) * rate + g.$imgBox.offset().top;
                 g.$frame.offset({left: g.$frame.offset().left, top: frameOffsetTop});
+            } else {
+                g.$frame.offset({left: g.$frame.offset().left, top: g.$imgBox.offset().top});
             }
 
         },
@@ -497,7 +559,7 @@ $(function() {
         // 关闭移动功能
         moveDisable : function() {
             var g = this;
-            g.movable = talse;
+            g.movable = false;
             g.$dom.css('cursor', 'auto');
             g.$dom.off('mousedown.previewimgmove');
         },
